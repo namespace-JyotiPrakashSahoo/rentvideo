@@ -1,13 +1,11 @@
 package com.example.rentvideo.service;
 
-import com.example.rentvideo.dto.AuthRequest;
+import com.example.rentvideo.dto.LoginRequest;
 import com.example.rentvideo.dto.RegisterRequest;
 import com.example.rentvideo.entity.Role;
 import com.example.rentvideo.entity.User;
 import com.example.rentvideo.repository.UserRepository;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -17,8 +15,12 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class AuthService {
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
+
+    @Autowired
+    UserRepository userRepository;
+
+    @Autowired
+    PasswordEncoder passwordEncoder;
 
     @Autowired
     AuthenticationManager authenticationManager;
@@ -41,7 +43,7 @@ public class AuthService {
         userRepository.save(user);
     }
 
-    public void login(AuthRequest request) {
+    public void login(LoginRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.getEmail(), request.getPassword()));

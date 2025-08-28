@@ -1,76 +1,53 @@
 package com.example.rentvideo.config;
 
-import com.example.rentvideo.repository.UserRepository;
+import com.example.rentvideo.filter.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-
-import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity(prePostEnabled = true)
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
-    private final UserRepository userRepository;
+
+
+    @Autowired
+    JwtAuthenticationFilter jwtAuthFilter;
+    @Autowired
+    AuthenticationProvider authenticationProvider;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
-        httpSecurity.csrf(AbstractHttpConfigurer::disable);
-
-        httpSecurity.authenticationProvider(authenticationProvider());
-
-        httpSecurity.authorizeHttpRequests(configurer -> configurer.requestMatchers(
-                                        "/api/v1/auth/register",
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(req ->
+                        req.requestMatchers(
+                                        "/api/v1/auth/**",
                                         "/v3/api-docs/**",
                                         "/swagger-ui/**",
+                                        "/api/v1/videos",
                                         "/swagger-ui.html"
-                                ).permitAll() // Allow these paths
+                                ).permitAll()
+                                .requestMatchers("/api/v1/videos/admin/**").hasRole("ADMIN")
+                                .requestMatchers("/api/v1/videos/**").hasAnyRole("ADMIN", "CUSTOMER")
+                                .requestMatchers("/api/v1/rentals/**").hasRole("CUSTOMER")
                                 .anyRequest()
-                                .authenticated() // Require authentication for all other requests
-                );
-        httpSecurity.httpBasic(Customizer.withDefaults());
-        httpSecurity.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+                                .authenticated()
+                )
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authenticationProvider(authenticationProvider)
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
-        return httpSecurity.build();
-    }
-
-    @Bean
-    public UserDetailsService userDetailsService() {
-        return username -> userRepository.findByEmail(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-    }
-
-    @Bean
-    AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
-        return configuration.getAuthenticationManager();
-    }
-
-    @Bean
-    public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(userDetailsService());
-        authProvider.setPasswordEncoder(passwordEncoder());
-        return authProvider;
-    }
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        return http.build();
     }
 }

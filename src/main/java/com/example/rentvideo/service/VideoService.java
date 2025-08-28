@@ -6,6 +6,7 @@ import com.example.rentvideo.entity.Video;
 import com.example.rentvideo.repository.VideoRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -13,7 +14,9 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class VideoService {
-    private final VideoRepository videoRepository;
+
+    @Autowired
+    VideoRepository videoRepository;
 
     public List<VideoResponse> getAllAvailableVideos() {
         return videoRepository.findByAvailable(true).stream()
